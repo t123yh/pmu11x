@@ -10,6 +10,9 @@
 #include <semphr.h>
 #include <pico.h>
 #include <hardware/uart.h>
+#include <cstring>
+#include <algorithm>
+#include <hardware/irq.h>
 #include <hardware/gpio.h>
 
 #ifdef BAT_RS485
@@ -303,20 +306,162 @@ BatteryCall(const BatteryRequest* req) {
   return len;
 }
 
-uint8_t ttt[100];
-void ControllerTask(void *_) {
+struct ValueParser {
+  const uint8_t* data;
+  uint16_t pos;
+  uint16_t len;
+
+  ValueParser(const uint8_t* data, uint16_t len) : data(data), len(len), pos(0) { }
+
+  uint8_t currentField() const {
+    if (eof())
+      return 0;
+    return data[pos];
+  }
+
+  bool eof() const {
+    return pos >= len;
+  }
+
+  static void copy(void* dest, const void* src, size_t len) {
+    const uint8_t* start = ((const uint8_t*) src) + len - 1;
+    uint8_t* destu = (uint8_t*)dest;
+    for (int i = 0; i < len; i++) {
+      *destu = *start;
+      destu++;
+      start--;
+    }
+  }
+
+  template <typename T> T readSingle() {
+    if (pos + 2 > len) {
+      pos = len;
+      return T{};
+    }
+
+    T ret;
+    pos++;
+    size_t fieldLen = data[pos] * 2;
+    pos++;
+    copy(&ret, data + pos, std::min(sizeof(T), fieldLen));
+    pos += fieldLen;
+    return ret;
+  }
+
+  template <typename T> uint8_t readMultiple(T* fields, uint8_t max) {
+    if (pos + 2 >= len) {
+      pos = len;
+      return 0;
+    }
+    pos++;
+    size_t count = data[pos];
+    pos++;
+    int copied = 0;
+    for (int i = 0; i < count; i++) {
+      if (pos + sizeof(T) > len) {
+        pos = len;
+        return copied;
+      }
+      if (i < max) {
+        copied++;
+        copy(fields + i, data + pos, sizeof(T));
+      }
+      pos += sizeof(T);
+    }
+    return copied;
+  }
+
+  size_t readArray(uint8_t* buf, size_t bufLen) {
+    if (pos + 2 >= len) {
+      pos = len;
+      return 0;
+    }
+    pos++;
+    size_t fieldLen = data[pos] * 2;
+    pos++;
+    if (pos + fieldLen > len) {
+      return 0;
+    }
+
+    size_t copied = std::min(fieldLen, bufLen);
+    memcpy(buf, data + pos, copied);
+    pos += fieldLen;
+
+    return copied;
+  }
+
+  void skip() {
+    if (pos + 2 > len) {
+      pos = len;
+    }
+
+    pos++;
+    size_t fieldLen = data[pos] * 2;
+    pos++;
+    pos += fieldLen;
+  }
+};
+
+void parseValue(BatteryInfo* result, uint8_t* ptr, uint8_t len) {
+  BatteryInfo & info = *result;
+  ValueParser parser(ptr, len);
+  while (!parser.eof()) {
+    uint8_t f = parser.currentField();
+    switch (f) {
+      case 1: // battery cell info
+        info.cellCount = parser.readMultiple(info.cells, kMaxCells);
+        break;
+      case 2:
+        info.current = parser.readSingle<int16_t>();
+        break;
+      case 3:
+        info.soc = parser.readSingle<uint16_t>();
+        break;
+      case 4:
+        info.fullCapacity = parser.readSingle<uint16_t>();
+        break;
+      case 5:
+        info.tempSensorCount = parser.readMultiple(info.tempValues, kMaxTempSensors);
+        break;
+      case 6:
+        info.alarmCount = parser.readArray(info.alarms, kMaxAlarms);
+        break;
+      case 7:
+        info.loop = parser.readSingle<uint16_t>();
+        break;
+      case 8:
+        info.sumCell = parser.readSingle<uint16_t>();
+        break;
+      case 9:
+        info.soh = parser.readSingle<uint16_t>();
+        break;
+      default:
+        parser.skip();
+        break;
+    }
+  }
+}
+
+void BatteryInit() {
   UartInit();
   batteryMutex = xSemaphoreCreateMutex();
-  while (true) {
-    BatteryRequest req = {
-        .address = kBatteryAddress,
-        .command = 0x1,
-        .req_len = 0,
-        .resp = ttt,
-        .resp_len = sizeof(ttt),
-        .timeout = 200,
-    };
-    volatile int aaa = BatteryCall(&req);
-    vTaskDelay(100);
+}
+
+bool GetBatteryInfo(BatteryInfo* info) {
+  size_t batRetSize = 100;
+  uint8_t* buf = static_cast<uint8_t *>(pvPortMalloc(batRetSize));
+  BatteryRequest req = {
+      .address = kBatteryAddress,
+      .command = 0x1,
+      .req_len = 0,
+      .resp = buf,
+      .resp_len = batRetSize,
+      .timeout = 200,
+  };
+  int ret = BatteryCall(&req);
+  if (ret > 0) {
+    parseValue(info, buf, (uint8_t)ret);
   }
+  vPortFree(buf);
+  return ret > 0;
 }
