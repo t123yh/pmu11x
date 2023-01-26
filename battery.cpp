@@ -4,6 +4,7 @@
 
 #include <cstdint>
 #include "battery.h"
+#include "led.h"
 #include <FreeRTOS.h>
 #include <task.h>
 #include <semphr.h>
@@ -139,6 +140,7 @@ static void UartEvent() {
           comm = REQ_TAIL;
           break;
         case REQ_TAIL:
+          ComGreenLed.mode = Led::TRIGGER;
           WriteByte(0x0D);
           comm = RESP_FRAME_HEAD;
           break;
@@ -213,6 +215,7 @@ static void UartEvent() {
           }
           break;
         case RESP_TAIL:
+          ComYellowLed.mode = Led::TRIGGER;
           if (dat == 0x0D) {
             done = true;
           } else {

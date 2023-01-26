@@ -61,6 +61,6 @@ include_directories(inc ioLibrary_Driver/Ethernet)
 
 
 add_executable(pmu11x_ctrl main.cpp w5500.c crc.c rtt/SEGGER_RTT.c rtt/SEGGER_RTT_ASM_ARMv7M.S rtt/SEGGER_RTT_printf.c
-        ws/mongoose.c)
+        ws/mongoose.c battery.cpp led.cpp)
 
-target_link_libraries(pmu11x_ctrl pico_stdlib FreeRTOS FreeRTOS_TCP hardware_dma hardware_spi pico_unique_id)
+target_link_libraries(pmu11x_ctrl pico_stdlib FreeRTOS FreeRTOS_TCP hardware_dma hardware_spi pico_unique_id hardware_uart)
