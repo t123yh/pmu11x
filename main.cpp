@@ -6,22 +6,58 @@
 #include <cstring>
 #include <crc.h>
 #include <FreeRTOS_IP.h>
+#include <pb_encode.h>
 #include "rtt/SEGGER_RTT.h"
+#include "ArduinoJson-v6.20.0.hpp"
 
-const uint LED_PIN = 20;
-const uint LED_PIN2 = 19;
-
-extern "C"  uint8_t getPHY();
-
-extern "C" void vIPerfInstall();
+static const uint LED_PIN_Blue = 20;
+static const uint LED_PIN_Yellow = 19;
 
 #include "ws/mongoose.h"
+#include "battery.h"
+#include "led.h"
+#include "controller.h"
+
+static bool pb_mg_write(pb_ostream_t *stream, const pb_byte_t *buf, size_t count)
+{
+mg_connection *dest = (mg_connection*)stream->state;
+mg_send(dest, buf, count);
+return true;
+}
+
+pb_ostream_t pb_ostream_from_mg(mg_connection* conn)
+{
+  pb_ostream_t stream;
+  stream.callback = &pb_mg_write;
+  stream.state = conn;
+  stream.max_size = SIZE_MAX;
+  stream.bytes_written = 0;
+#ifndef PB_NO_ERRMSG
+  stream.errmsg = NULL;
+#endif
+  return stream;
+}
 
 static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
   if (ev == MG_EV_HTTP_MSG) {
     struct mg_http_message *hm = (struct mg_http_message *) ev_data;
-    if (mg_http_match_uri(hm, "/api/hello")) {              // On /api/hello requests,
-      mg_http_reply(c, 200, "", "{%Q:%d,%Q:%d}\n", "status", 1, "free_mem", xPortGetFreeHeapSize());  // Send dynamic JSON response
+    if (mg_http_match_uri(hm, "/api/battery")) {              // On /api/hello requests,
+      auto batt = getCurrentBatteryInfo();
+      if (batt.has_value()) {
+        size_t size = 0;
+        pb_get_encoded_size(&size,&BatteryInfo_msg, &batt.value());
+        mg_printf(c, "HTTP/1.1 200 OK\r\n"
+                     "Cache-Control: no-cache\r\n"
+                     "Content-Type: application/x-protobuf\r\n"
+                     "Connection: close\r\n"
+                     "Content-Length: %d\r\n"
+                     "\r\n", size);
+        pb_ostream_t stream = pb_ostream_from_mg(c);
+        pb_encode(&stream, &BatteryInfo_msg, &batt.value());
+        c->is_resp = 0;
+      } else {
+        mg_http_reply(c, 500, "", "");  // Send dynamic JSON response
+      }
     } else {                                                // For all other URIs,
       struct mg_http_serve_opts opts = {.root_dir = "."};   // Serve files
       mg_http_serve_dir(c, hm, &opts);                      // From root_dir
@@ -33,34 +69,15 @@ void mg_main(void* _) {
   struct mg_mgr mgr;
   mg_mgr_init(&mgr);                                      // Init manager
   mg_http_listen(&mgr, "http://0.0.0.0:8000", fn, &mgr);  // Setup listener
-  for (;;) mg_mgr_poll(&mgr, 1000);                       // Event loop
+  for (;;) mg_mgr_poll(&mgr, 10);                       // Event loop
 }
 
-void led_task_gpio(void* _) {
-  vTaskDelay(10);
-  while (1) {
-    uint p = LED_PIN2;
-    gpio_put( p, 0);
-    vTaskDelay(200);
-    gpio_put( p, 1);
-    vTaskDelay(200);
-  }
-
-  /*
-  while (1) {
-    uint8_t x;
-    xQueueReceive(ledq, &x, portMAX_DELAY);
-    uint p = x ? LED_PIN : LED_PIN2;
-    gpio_put( p, 0);
-    vTaskDelay(50);
-    gpio_put( p, 1);
-    vTaskDelay(50);
-    uint8_t g = getPHY();
-    gpio_put( LED_PIN, !(g & 1));
-    vTaskDelay(100);
-  }
-     */
-
+void init_task(void* _) {
+  InitLed();
+  BatteryInit();
+  xTaskCreate(mg_main, "MG",  4096, NULL,tskIDLE_PRIORITY, nullptr);
+  xTaskCreate(controllerTask, "CTRL",  256, NULL,configMAX_PRIORITIES - 1, nullptr);
+  while (1) vTaskDelay(100);
 }
 
 static const uint8_t ucIPAddress[ 4 ] = { 192, 168, 1, 211 };
@@ -74,14 +91,14 @@ int main() {
   SEGGER_RTT_Init();
 
   bi_decl(bi_program_description("First Blink"));
-  bi_decl(bi_1pin_with_name(LED_PIN, "On-board LED"));
+  bi_decl(bi_1pin_with_name(LED_PIN_Blue, "On-board LED"));
 
-  gpio_init(LED_PIN);
-  gpio_init(LED_PIN2);
-  gpio_set_dir(LED_PIN, GPIO_OUT);
-  gpio_set_dir(LED_PIN2, GPIO_OUT);
-  gpio_put(LED_PIN, 1);
-  gpio_put(LED_PIN2, 1);
+  gpio_init(LED_PIN_Blue);
+  gpio_init(LED_PIN_Yellow);
+  gpio_set_dir(LED_PIN_Blue, GPIO_OUT);
+  gpio_set_dir(LED_PIN_Yellow, GPIO_OUT);
+  gpio_put(LED_PIN_Blue, 1);
+  gpio_put(LED_PIN_Yellow, 1);
 
   pico_unique_board_id_t board_id;
   pico_get_unique_board_id(&board_id);
@@ -99,7 +116,7 @@ int main() {
                    ucDNSServerAddress,
                    mac_addr);
 
-  xTaskCreate(led_task_gpio, "GPIO_LED_TASK",  128, NULL,tskIDLE_PRIORITY, nullptr);
+  xTaskCreate(init_task, "INIT",  128, NULL,tskIDLE_PRIORITY, nullptr);
   vTaskStartScheduler();
 
   for( ;; );
@@ -120,12 +137,11 @@ extern "C" void vApplicationIPNetworkEventHook( eIPCallbackEvent_t eNetworkEvent
        * For convenience, tasks that use FreeRTOS-Plus-TCP can be created here
        * to ensure they are not created before the network is usable.
        */
-      xTaskCreate(mg_main, "MG_TASK",  1024, NULL,tskIDLE_PRIORITY + 1, nullptr);
       xTasksAlreadyCreated = pdTRUE;
     }
-    gpio_put(LED_PIN, 0);
+    // gpio_put(LED_PIN_Blue, 0);
   } else if (eNetworkEvent == eNetworkDown) {
-    gpio_put(LED_PIN, 1);
+    // gpio_put(LED_PIN_Blue, 1);
   }
 }
 

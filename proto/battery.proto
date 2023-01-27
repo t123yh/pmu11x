@@ -1,0 +1,22 @@
+syntax = "proto2";
+import "nanopb.proto";
+
+message BatteryCellInfo {
+    required bool under_voltage = 1;
+    required bool over_voltage = 2;
+    required bool balance = 3;
+    required uint32 value = 4;
+}
+
+message BatteryInfo {
+    repeated BatteryCellInfo cells = 1 [(nanopb).max_count = 16];
+    required sint32 current = 2;
+    required int32 soc = 3;
+    required int32 full_capacity = 4;
+    repeated sint32 temperatures = 5 [(nanopb).max_count = 4];
+    required bytes alarm = 6 [(nanopb).max_size = 12];
+    required int32 loop = 7;
+    required int32 voltage_sum = 8;
+    required int32 soh = 9;
+}
+

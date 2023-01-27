@@ -8,9 +8,7 @@
 #include <cstdint>
 #include <cstddef>
 
-const size_t kMaxCells = 16;
-const size_t kMaxTempSensors = 4;
-const size_t kMaxAlarms = 10;
+#include <battery.pb.h>
 
 struct BatteryAlarms {
   bool MosNtcError:1;
@@ -94,6 +92,9 @@ struct BatteryAlarms {
   bool DischargeUnderTempAlert:1;
 };
 
+
+
+/*
 struct BatteryInfo {
   uint8_t cellCount;
 
@@ -124,8 +125,7 @@ struct BatteryInfo {
   uint16_t sumCell;
   uint16_t soh;
 };
-
-void ControllerTask(void *_);
+ */
 
 void BatteryInit();
 bool GetBatteryInfo(BatteryInfo* info);

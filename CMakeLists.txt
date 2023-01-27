@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.23)
 include(pico_sdk_import.cmake)
 project(pmu11x_ctrl C CXX ASM)
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 pico_sdk_init()
 
 
@@ -13,9 +13,8 @@ add_library(FreeRTOS STATIC
         FreeRTOS/stream_buffer.c
         FreeRTOS/tasks.c
         FreeRTOS/timers.c
-        FreeRTOS/portable/MemMang/heap_4.c
         FreeRTOS/portable/GCC/ARM_CM0/port.c
-        )
+        FreeRTOS/portable/MemMang/heap_4.c)
 
 target_include_directories(FreeRTOS PUBLIC
         config
@@ -59,8 +58,13 @@ target_link_libraries(FreeRTOS_TCP FreeRTOS)
 
 include_directories(inc ioLibrary_Driver/Ethernet)
 
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${NANOPB_SRC_ROOT_FOLDER}/extra)
+find_package( Nanopb REQUIRED )
+include_directories(${NANOPB_INCLUDE_DIRS})
+nanopb_generate_cpp(PROTO_SRCS PROTO_HDRS proto/battery.proto)
+include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 add_executable(pmu11x_ctrl main.cpp w5500.c crc.c rtt/SEGGER_RTT.c rtt/SEGGER_RTT_ASM_ARMv7M.S rtt/SEGGER_RTT_printf.c
-        ws/mongoose.c battery.cpp led.cpp)
+        ws/mongoose.c battery.cpp led.cpp controller.cpp ${PROTO_SRCS} ${PROTO_HDRS})
 
 target_link_libraries(pmu11x_ctrl pico_stdlib FreeRTOS FreeRTOS_TCP hardware_dma hardware_spi pico_unique_id hardware_uart)

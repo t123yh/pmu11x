@@ -27,6 +27,14 @@
 
 const uint8_t kBatteryAddress = 0;
 
+#define ARRAY_SIZE(a)                               \
+  ((sizeof(a) / sizeof(*(a))) /                     \
+  static_cast<size_t>(!(sizeof(a) % sizeof(*(a)))))
+
+const size_t kMaxCells = ARRAY_SIZE(BatteryInfo::cells);
+const size_t kMaxTempSensors = ARRAY_SIZE(BatteryInfo::temperatures);
+const size_t kMaxAlarms = ARRAY_SIZE(BatteryInfo::alarm.bytes);
+
 struct BatteryRequest {
   uint8_t address;
   uint8_t command;
@@ -409,28 +417,47 @@ void parseValue(BatteryInfo* result, uint8_t* ptr, uint8_t len) {
     uint8_t f = parser.currentField();
     switch (f) {
       case 1: // battery cell info
-        info.cellCount = parser.readMultiple(info.cells, kMaxCells);
+        struct __attribute__ ((__packed__)) {
+          uint16_t value:13;
+          bool underVoltage:1;
+          bool overVoltage:1;
+          bool balance:1;
+        } raw[kMaxCells];
+        info.cells_count = parser.readMultiple(raw, kMaxCells);
+        for (int i = 0; i < info.cells_count; i++) {
+          info.cells[i].value = raw[i].value;
+          info.cells[i].over_voltage = raw[i].overVoltage;
+          info.cells[i].under_voltage = raw[i].underVoltage;
+          info.cells[i].balance = raw[i].balance;
+        }
         break;
       case 2:
-        info.current = parser.readSingle<int16_t>();
+        info.current = ((int32_t)parser.readSingle<uint16_t>()) - 30000;
         break;
       case 3:
         info.soc = parser.readSingle<uint16_t>();
         break;
       case 4:
-        info.fullCapacity = parser.readSingle<uint16_t>();
+        info.full_capacity = parser.readSingle<uint16_t>();
         break;
       case 5:
-        info.tempSensorCount = parser.readMultiple(info.tempValues, kMaxTempSensors);
+        struct __attribute__ ((__packed__)) {
+          uint8_t value;
+          uint8_t status;
+        } temp_raw[kMaxTempSensors];
+        info.temperatures_count = parser.readMultiple(temp_raw, kMaxTempSensors);
+        for (int i = 0; i < info.temperatures_count; i++) {
+          info.temperatures[i] = temp_raw[i].value - 50;
+        }
         break;
       case 6:
-        info.alarmCount = parser.readArray(info.alarms, kMaxAlarms);
+        info.alarm.size = parser.readArray(info.alarm.bytes, kMaxAlarms);
         break;
       case 7:
         info.loop = parser.readSingle<uint16_t>();
         break;
       case 8:
-        info.sumCell = parser.readSingle<uint16_t>();
+        info.voltage_sum = parser.readSingle<uint16_t>();
         break;
       case 9:
         info.soh = parser.readSingle<uint16_t>();
