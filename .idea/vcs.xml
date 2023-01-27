@@ -3,6 +3,5 @@
   <component name="VcsDirectoryMappings">
     <mapping directory="" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/FreeRTOS-Plus-TCP" vcs="Git" />
-    <mapping directory="$PROJECT_DIR$/ioLibrary_Driver" vcs="Git" />
   </component>
 </project>
