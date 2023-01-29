@@ -3,7 +3,7 @@
 //
 
 #include "time.h"
-#include "rtt/SEGGER_RTT.h"
+#include "ds1302.h"
 
 #include <FreeRTOS.h>
 #include <FreeRTOS_DNS.h>
@@ -67,32 +67,22 @@ static void sntpClient_SetTime(const SntpServerInfo_t *pTimeServer,
                                const SntpTimestamp_t *pServerTime,
                                int64_t clockOffsetMs,
                                SntpLeapSecondInfo_t leapSecondInfo) {
-  uint32_t unixSecs;
-  uint32_t unixMs;
-  SntpStatus_t status = Sntp_ConvertToUnixTime(pServerTime, &unixSecs, &unixMs);
+  time_t unixSecs;
 
-  volatile uint32_t xx = unixSecs;
-  volatile uint32_t yy = unixMs;
-
-  SEGGER_RTT_printf(0, "GOT TIME %d", xx);
-
-  configASSERT(status == SntpSuccess);
-
-  /*
-  struct timespec serverTime =
-      {
-          .tv_sec  = unixSecs,
-          .tv_nsec = unixMs * 1000
-      };
-
-  clock_settime( CLOCK_REALTIME, &serverTime );
-   */
+  if (pServerTime->seconds > 3883978605) {
+    unixSecs = (int64_t)pServerTime->seconds - SNTP_TIME_AT_UNIX_EPOCH_SECS;
+  } else {
+    unixSecs = (int64_t)pServerTime->seconds + UNIX_TIME_SECS_AT_SNTP_ERA_1_SMALLEST_TIME;
+  }
+  tm tm{};
+  ds1302SetTime(localtime_r(&unixSecs, &tm));
 }
 
 static void sntpClient_GetTime(SntpTimestamp_t *pCurrentTime) {
-  TickType_t ticks = xTaskGetTickCount();
-  pCurrentTime->seconds = ticks / 1000;
-  pCurrentTime->fractions = (ticks % 1000) * SNTP_FRACTION_VALUE_PER_MICROSECOND * 1000;
+  tm tm{};
+  ds1302GetTime(&tm);
+  pCurrentTime->seconds = mktime(&tm);
+  pCurrentTime->fractions = xTaskGetTickCount() % 1000;
 }
 
 #define TEST_TIME_SERVER_1                      "ntp.aliyun.com"
