@@ -56,15 +56,26 @@ target_include_directories(FreeRTOS_TCP PUBLIC
 
 target_link_libraries(FreeRTOS_TCP FreeRTOS)
 
-include_directories(inc ioLibrary_Driver/Ethernet)
+# ====== begin coreSNTP ======
+include(coreSNTP/coreSntpFilePaths.cmake)
+add_library(coreSNTP STATIC ${CORE_SNTP_SOURCES})
+target_include_directories(coreSNTP PUBLIC ${CORE_SNTP_INCLUDE_PUBLIC_DIRS} config)
+# ====== end coreSNTP ======
 
+# ====== begin nanopb ======
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${NANOPB_SRC_ROOT_FOLDER}/extra)
-find_package( Nanopb REQUIRED )
-include_directories(${NANOPB_INCLUDE_DIRS})
+find_package(Nanopb REQUIRED)
 nanopb_generate_cpp(PROTO_SRCS PROTO_HDRS proto/battery.proto)
-include_directories(${CMAKE_CURRENT_BINARY_DIR})
+add_library(nanopb STATIC ${PROTO_SRCS})
+target_include_directories(nanopb PUBLIC ${NANOPB_INCLUDE_DIRS} ${CMAKE_CURRENT_BINARY_DIR})
+# ====== end nanopb ======
+
+
+include_directories(inc)
 
 add_executable(pmu11x_ctrl main.cpp w5500.c crc.c rtt/SEGGER_RTT.c rtt/SEGGER_RTT_ASM_ARMv7M.S rtt/SEGGER_RTT_printf.c
-        ws/mongoose.c battery.cpp led.cpp controller.cpp ${PROTO_SRCS} ${PROTO_HDRS})
+        ws/mongoose.c battery.cpp led.cpp controller.cpp time/time.cpp time/ds1302.cpp)
 
-target_link_libraries(pmu11x_ctrl pico_stdlib FreeRTOS FreeRTOS_TCP hardware_dma hardware_spi pico_unique_id hardware_uart)
+pico_generate_pio_header(pmu11x_ctrl ${PROJECT_SOURCE_DIR}/time/ds1302.pio)
+
+target_link_libraries(pmu11x_ctrl pico_stdlib hardware_dma hardware_spi pico_unique_id hardware_uart FreeRTOS_TCP FreeRTOS coreSNTP nanopb hardware_pio)
