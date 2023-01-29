@@ -1,0 +1,29 @@
+.program ds1302
+.side_set 1
+
+start:
+
+set pindirs, 1              side 0
+out y, 8                    side 0
+
+do_byte_write:
+    set x, 7                side 0
+    bitloop:
+        out pins, 1         side 0
+        jmp x-- bitloop     side 1
+    jmp y-- do_byte_write   side 1
+
+out y, 8                    side 1
+set pindirs, 0              side 1
+jmp y-- do_byte_read        side 0
+jmp done                    side 0
+
+do_byte_read:
+    set x, 7                side 0
+    bitloop2:
+        in pins, 1          side 1
+        jmp x-- bitloop2    side 0
+    jmp y-- do_byte_read    side 0
+
+done:
+    irq wait 0              side 0
