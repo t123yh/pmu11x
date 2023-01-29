@@ -171,7 +171,12 @@ void ds1302GetTime(struct tm* t) {
     t->tm_mday = bcd2bin(buf[3]);
     t->tm_mon = bcd2bin(buf[4]) - 1;
     t->tm_wday = bcd2bin(buf[5] % 7);
-    t->tm_year = bcd2bin(buf[6]) + 2000;
+    t->tm_year = bcd2bin(buf[6]) + 100;
+  } else {
+    // Return a fake date
+    // 2020.1.1
+    time_t fake = 1577836800 + xTaskGetTickCount() / 1000;
+    gmtime_r(&fake, t);
   }
   xSemaphoreGive(ds1302Mutex);
 }
