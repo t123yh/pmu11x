@@ -8,7 +8,6 @@
 #include <FreeRTOS_IP.h>
 #include <pb_encode.h>
 #include "rtt/SEGGER_RTT.h"
-#include "ArduinoJson-v6.20.0.hpp"
 
 static const uint LED_PIN_Blue = 20;
 static const uint LED_PIN_Yellow = 19;
@@ -17,6 +16,8 @@ static const uint LED_PIN_Yellow = 19;
 #include "battery.h"
 #include "led.h"
 #include "controller.h"
+#include "time/time.h"
+#include "time/ds1302.h"
 
 static bool pb_mg_write(pb_ostream_t *stream, const pb_byte_t *buf, size_t count)
 {
@@ -38,7 +39,24 @@ pb_ostream_t pb_ostream_from_mg(mg_connection* conn)
   return stream;
 }
 
+static void dateHeader(char* buf, int len) {
+  const char *weekday_names[] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
+  const char *month_names[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
+  tm timeinfo{};
+  ds1302GetTime(&timeinfo);
+  snprintf(buf, len, "Date: %s, %02d %s %04d %02d:%02d:%02d GMT\r\n",
+         weekday_names[timeinfo.tm_wday],
+         timeinfo.tm_mday,
+         month_names[timeinfo.tm_mon],
+         timeinfo.tm_year + 1900,
+         timeinfo.tm_hour,
+         timeinfo.tm_min,
+         timeinfo.tm_sec);
+}
+
 static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
+  char date_header[38];
+  dateHeader(date_header, sizeof(date_header));
   if (ev == MG_EV_HTTP_MSG) {
     struct mg_http_message *hm = (struct mg_http_message *) ev_data;
     if (mg_http_match_uri(hm, "/api/battery")) {              // On /api/hello requests,
@@ -51,15 +69,16 @@ static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
                      "Content-Type: application/x-protobuf\r\n"
                      "Connection: close\r\n"
                      "Content-Length: %d\r\n"
-                     "\r\n", size);
+                     "%s"
+                     "\r\n", size, date_header);
         pb_ostream_t stream = pb_ostream_from_mg(c);
         pb_encode(&stream, &BatteryInfo_msg, &batt.value());
         c->is_resp = 0;
       } else {
-        mg_http_reply(c, 500, "", "");  // Send dynamic JSON response
+        mg_http_reply(c, 500, date_header, "");  // Send dynamic JSON response
       }
     } else {                                                // For all other URIs,
-      struct mg_http_serve_opts opts = {.root_dir = "."};   // Serve files
+      struct mg_http_serve_opts opts = {.root_dir = ".", .extra_headers = date_header};   // Serve files
       mg_http_serve_dir(c, hm, &opts);                      // From root_dir
     }
   }
@@ -77,6 +96,8 @@ void init_task(void* _) {
   BatteryInit();
   xTaskCreate(mg_main, "MG",  4096, NULL,tskIDLE_PRIORITY, nullptr);
   xTaskCreate(controllerTask, "CTRL",  256, NULL,configMAX_PRIORITIES - 1, nullptr);
+  ds1302Init();
+  timeWork();
   while (1) vTaskDelay(100);
 }
 
@@ -85,7 +106,7 @@ static const uint8_t ucNetMask[ 4 ] = { 255, 255, 255, 0 };
 static const uint8_t ucGatewayAddress[ 4 ] = { 192, 168, 1, 1 };
 
 /* The following is the address of an OpenDNS server. */
-static const uint8_t ucDNSServerAddress[ 4 ] = { 208, 67, 222, 222 };
+static const uint8_t ucDNSServerAddress[ 4 ] = { 192,168,1,1 };
 
 int main() {
   SEGGER_RTT_Init();
