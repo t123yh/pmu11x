@@ -300,9 +300,4 @@ extern uint32_t ulRand( void );
 
 #define ipINITIALISATION_RETRY_DELAY (pdMS_TO_TICKS(100U))
 
-#include "../rtt/SEGGER_RTT.h"
-
-#define traceARP_PACKET_RECEIVED() SEGGER_RTT_printf(0, "ARP Packet RECV!\n")
-#define iptraceNETWORK_INTERFACE_INPUT(len, buf) SEGGER_RTT_printf(0, "Net input len=%d\n", len)
-
 #endif /* FREERTOS_IP_CONFIG_H */

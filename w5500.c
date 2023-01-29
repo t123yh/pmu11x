@@ -1,18 +1,14 @@
 #include <sys/cdefs.h>
-//#include <stdio.h>
 #include <FreeRTOS.h>
 #include <task.h>
 #include "w5500.h"
 #include "semphr.h"
-#include "crc.h"
 #include "FreeRTOS_IP.h"
-#include "rtt/SEGGER_RTT.h"
 #include <pico/stdlib.h>
 #include <hardware/spi.h>
 #include <hardware/dma.h>
 #include <pico/binary_info/code.h>
 #include <pico/unique_id.h>
-#include <string.h>
 #include <hardware/structs/rosc.h>
 
 #define SPI_PORT spi0
@@ -330,8 +326,6 @@ void w5500_init(void) {
 
 BaseType_t xNetworkInterfaceOutput(NetworkBufferDescriptor_t *const pxDescriptor,
                                    BaseType_t xReleaseAfterSend) {
-  SEGGER_RTT_printf(0, "Send packet type = %04X, len = %d\n", *(uint16_t *) &pxDescriptor->pucEthernetBuffer[12],
-                    pxDescriptor->xDataLength);
   BaseType_t transmitted = pdFALSE;
   xSemaphoreTake(chip_sem, portMAX_DELAY);
   size_t data_len = pxDescriptor->xDataLength;
@@ -353,7 +347,6 @@ BaseType_t xNetworkInterfaceOutput(NetworkBufferDescriptor_t *const pxDescriptor
 
   // Wait for SENDOK interrupt
   ulTaskNotifyTake(pdFALSE, portMAX_DELAY);
-  SEGGER_RTT_printf(0, "Send OK!\n");
 
   return transmitted;
 }
