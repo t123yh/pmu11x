@@ -5,6 +5,8 @@ project(pmu11x_ctrl C CXX ASM)
 set(CMAKE_CXX_STANDARD 17)
 pico_sdk_init()
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Werror=return-type")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Werror=return-type")
 
 add_library(FreeRTOS STATIC
         FreeRTOS/event_groups.c
