@@ -316,8 +316,8 @@ BatteryCall(const BatteryRequest* req) {
 
 struct ValueParser {
   const uint8_t* data;
-  uint16_t pos;
   uint16_t len;
+  uint16_t pos;
 
   ValueParser(const uint8_t* data, uint16_t len) : data(data), len(len), pos(0) { }
 
@@ -425,20 +425,20 @@ void parseValue(BatteryInfo* result, uint8_t* ptr, uint8_t len) {
         } raw[kMaxCells];
         info.cells_count = parser.readMultiple(raw, kMaxCells);
         for (int i = 0; i < info.cells_count; i++) {
-          info.cells[i].value = raw[i].value;
+          info.cells[i].value = raw[i].value / 1000.0;
           info.cells[i].over_voltage = raw[i].overVoltage;
           info.cells[i].under_voltage = raw[i].underVoltage;
           info.cells[i].balance = raw[i].balance;
         }
         break;
       case 2:
-        info.current = ((int32_t)parser.readSingle<uint16_t>()) - 30000;
+        info.current = (((float)parser.readSingle<uint16_t>()) - 30000.0) / 100.0;
         break;
       case 3:
-        info.soc = parser.readSingle<uint16_t>();
+        info.soc = parser.readSingle<uint16_t>() / 100.0;
         break;
       case 4:
-        info.full_capacity = parser.readSingle<uint16_t>();
+        info.full_capacity = parser.readSingle<uint16_t>() / 100.0;
         break;
       case 5:
         struct __attribute__ ((__packed__)) {
@@ -457,10 +457,10 @@ void parseValue(BatteryInfo* result, uint8_t* ptr, uint8_t len) {
         info.loop = parser.readSingle<uint16_t>();
         break;
       case 8:
-        info.voltage_sum = parser.readSingle<uint16_t>();
+        info.voltage_sum = parser.readSingle<uint16_t>() / 100.0;
         break;
       case 9:
-        info.soh = parser.readSingle<uint16_t>();
+        info.soh = parser.readSingle<uint16_t>() / 100.0;
         break;
       default:
         parser.skip();
