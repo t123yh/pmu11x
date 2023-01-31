@@ -1706,7 +1706,7 @@ void     WIZCHIP_WRITE_BUF(uint32_t AddrSel, uint8_t* pBuf, uint16_t len);
  * @sa getSn_IMR()
  */
 #define setSn_IMR(sn, imr) \
-		WIZCHIP_WRITE(Sn_IMR(sn), (imr & 0x1F))
+		WIZCHIP_WRITE(Sn_IMR(sn), ((imr) & 0x1F))
 
 /**
  * @ingroup Socket_register_access_function

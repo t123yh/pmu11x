@@ -207,7 +207,6 @@ _Noreturn static void w5500_interrupt_task(void *pvParameters) {
       if (ir & Sn_IR_RECV) {
         // Process until end
         while (getSn_RX_RSR(0) != 0) {
-          volatile uint16_t rsr = getSn_RX_RSR(0);
           // Get current data pointer
           uint16_t ptr = getSn_RX_RD(0);
 
