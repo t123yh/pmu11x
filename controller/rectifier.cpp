@@ -11,7 +11,6 @@
 #include <hardware/irq.h>
 #include <hardware/clocks.h>
 #include <cstring>
-#include "rectifier.pb.h"
 
 static const uint tx_pin = 23;
 static const uint rx_pin = 22;

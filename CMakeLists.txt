@@ -64,7 +64,7 @@ target_include_directories(coreSNTP PUBLIC ${CORE_SNTP_INCLUDE_PUBLIC_DIRS} conf
 # ====== begin nanopb ======
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${NANOPB_SRC_ROOT_FOLDER}/extra)
 find_package(Nanopb REQUIRED)
-nanopb_generate_cpp(PROTO_SRCS PROTO_HDRS proto/battery.proto proto/rectifier.proto)
+nanopb_generate_cpp(PROTO_SRCS PROTO_HDRS proto/messages.proto)
 add_library(nanopb STATIC ${PROTO_SRCS})
 target_include_directories(nanopb PUBLIC ${NANOPB_INCLUDE_DIRS} ${CMAKE_CURRENT_BINARY_DIR})
 # ====== end nanopb ======

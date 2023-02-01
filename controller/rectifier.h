@@ -5,7 +5,7 @@
 #ifndef PMU11X_CTRL_RECTIFIER_H
 #define PMU11X_CTRL_RECTIFIER_H
 
-#include "rectifier.pb.h"
+#include <messages.pb.h>
 
 void RectifierInit();
 bool RectifierPowerControl(bool on);

@@ -8,7 +8,7 @@
 #include <cstdint>
 #include <cstddef>
 
-#include <battery.pb.h>
+#include <messages.pb.h>
 
 struct BatteryAlarms {
   bool MosNtcError:1;
