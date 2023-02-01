@@ -119,43 +119,43 @@ bool RectifierQuery(RectifierInfo* info) {
         uint32_t val = __builtin_bswap32(msg.structData.valB);
         switch (__builtin_bswap16(msg.structData.regB)) {
           case 0x10e:
-            info->StatusValue = msg.structData.regB;
+            info->status_value = msg.structData.regB;
             break;
           case 0x170:
-            info->InputPower = val / 1024.0;
+            info->input_power = val / 1024.0;
             break;
           case 0x171:
-            info->InputFrequency = val / 1024.0;
+            info->input_frequency = val / 1024.0;
             break;
           case 0x172:
-            info->InputCurrent = val / 1024.0;
+            info->input_current = val / 1024.0;
             break;
           case 0x173:
-            info->OutputPower = val / 1024.0;
+            info->output_power = val / 1024.0;
             break;
           case 0x174:
-            info->Efficiency = val / 1024.0;
+            info->efficiency = val / 1024.0;
             break;
           case 0x175:
-            info->OutputVoltage = val / 1024.0;
+            info->output_voltage = val / 1024.0;
             break;
           case 0x176:
-            info->MaxOutputCurrent = val / 30.0;
+            info->max_output_current = val / 30.0;
             break;
           case 0x178:
-            info->InputVoltage = val / 1024.0;
+            info->input_voltage = val / 1024.0;
             break;
           case 0x17F:
-            info->OutputModuleTemp = val / 1024.0;
+            info->output_module_temp = val / 1024.0;
             break;
           case 0x180:
-            info->InputModuleTemp = val / 1024.0;
+            info->input_module_temp = val / 1024.0;
             break;
           case 0x182:
-            info->OutputCurrent = val / 1024.0;
+            info->output_current = val / 1024.0;
             break;
           case 0x183:
-            info->AlarmValue = msg.structData.valB;
+            info->alarm_value = msg.structData.valB;
             return true;
             break;
         }

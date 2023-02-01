@@ -74,7 +74,7 @@ void controllerTask(void *_) {
       rectifierFaultCycles = 0;
     }
 
-    if (std::abs(localRectInfo.OutputVoltage - RectifierOnlineVoltage) > 0.2) {
+    if (std::abs(localRectInfo.output_voltage - RectifierOnlineVoltage) > 0.2) {
       ResetVoltage();
     }
 
@@ -96,8 +96,8 @@ void controllerTask(void *_) {
       bool charge = ShouldCharge() && localBattInfo.soc < 99.9 && !battError;
       if (rectOk) {
         // TODO: when mains is not ok, alarmValue = 134349344. Should decide which bit actually means mains not ok
-        bool mainsOk = !(localRectInfo.AlarmValue & (1 << 27));
-        bool rectifierOn = !(localRectInfo.AlarmValue & (1 << 17));
+        bool mainsOk = !(localRectInfo.alarm_value & (1 << 27));
+        bool rectifierOn = !(localRectInfo.alarm_value & (1 << 17));
         if (mainsOk) {
           // If mains is OK
           if (charge) {
@@ -160,9 +160,6 @@ void controllerTask(void *_) {
       // If battery information is not available, put rectifier in a safe state
       SetRectifierVoltage(RectifierVoltageDefault);
     }
-
-    SEGGER_RTT_printf(0, "Have alarm = %d\n", localRectInfo.AlarmValue != 0);
-    // RectifierPowerControl(rectifierOn);
 
     vTaskDelay(100);
   }
