@@ -9,11 +9,11 @@
 
 struct CriticalAreaHandle
 {
-  CriticalAreaHandle() {
+  inline __attribute__((always_inline)) CriticalAreaHandle() {
     portENTER_CRITICAL();
   }
 
-  ~CriticalAreaHandle() {
+  inline __attribute__((always_inline)) ~CriticalAreaHandle() {
     portEXIT_CRITICAL();
   }
 };

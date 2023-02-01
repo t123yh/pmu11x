@@ -45,7 +45,7 @@ struct BatteryAlarms {
   bool ChargeOverTempProtection:1;
   bool ChargeUnderTempProtection:1;
 
-  bool EnvUnderTempProtection:1;
+  bool EnvUnderTemp:1;
   bool InvalidDryContactActionAlert:1;
   bool SeriousDryContactActionAlert:1;
   bool :2;
@@ -129,5 +129,14 @@ struct BatteryInfo {
 
 void BatteryInit();
 bool GetBatteryInfo(BatteryInfo* info);
+struct BatteryCommand {
+  uint8_t cmd;
+  uint8_t val;
+};
+static const BatteryCommand BatteryCommandChargeEnable = {.cmd = 211, .val = 1};
+static const BatteryCommand BatteryCommandChargeDisable = {.cmd = 211, .val = 2};
+static const BatteryCommand BatteryCommandDischargeEnable = {.cmd = 211, .val = 3};
+static const BatteryCommand BatteryCommandDischargeDisable = {.cmd = 211, .val = 4};
+bool SendBatteryCommand(const BatteryCommand& cmd);
 
 #endif //PMU11X_CTRL_BATTERY_H

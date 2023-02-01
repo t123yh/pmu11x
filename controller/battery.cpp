@@ -4,7 +4,7 @@
 
 #include <cstdint>
 #include "battery.h"
-#include "led.h"
+#include "../led.h"
 #include <FreeRTOS.h>
 #include <task.h>
 #include <semphr.h>
@@ -281,30 +281,36 @@ BatteryCall(const BatteryRequest* req) {
     return -1;
   }
 
-  int len;
+  int len = -1;
+  const int max_retries = 3;
+  int retries = max_retries;
 
-  ClearFifo();
+  while (retries-- && len < 0) {
+    ClearFifo();
+    if (retries == max_retries - 1)
+      vTaskDelay(20);
 
-  currentRequest = req;
-  comm = REQ_FRAME_HEAD;
-  waitingTask = xTaskGetCurrentTaskHandle();
-  int UART_IRQ = UART_NUM == uart0 ? UART0_IRQ : UART1_IRQ;
-  irq_set_enabled(UART_IRQ, true);
+    currentRequest = req;
+    comm = REQ_FRAME_HEAD;
+    waitingTask = xTaskGetCurrentTaskHandle();
+    int UART_IRQ = UART_NUM == uart0 ? UART0_IRQ : UART1_IRQ;
+    irq_set_enabled(UART_IRQ, true);
 
-  // Kickstart
-  UartEvent();
+    // Kickstart
+    UartEvent();
 
-  uint32_t val;
-  if (xTaskNotifyWait(0, 0xFFFFFFFF, &val, req->timeout) == pdFALSE) {
-    len = -1;
-  } else {
-    if (val == kMagicOk) {
-      len = actualResponseLength;
+    uint32_t val;
+    if (xTaskNotifyWait(0, 0xFFFFFFFF, &val, req->timeout) == pdFALSE) {
+      len = -1;
     } else {
-      len = -2;
+      if (val == kMagicOk) {
+        len = actualResponseLength;
+      } else {
+        len = -2;
+      }
     }
+    irq_set_enabled(UART_IRQ, false);
   }
-  irq_set_enabled(UART_IRQ, false);
 
   currentRequest = nullptr;
   comm = IDLE;
@@ -491,4 +497,18 @@ bool GetBatteryInfo(BatteryInfo* info) {
   }
   vPortFree(buf);
   return ret > 0;
+}
+
+bool SendBatteryCommand(const BatteryCommand& cmd) {
+  BatteryRequest req = {
+      .address = kBatteryAddress,
+      .command = cmd.cmd,
+      .req = &cmd.val,
+      .req_len = 1,
+      .resp = nullptr,
+      .resp_len = 0,
+      .timeout = 100,
+  };
+  int ret = BatteryCall(&req);
+  return ret >= 0;
 }

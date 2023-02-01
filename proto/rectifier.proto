@@ -1,0 +1,18 @@
+syntax = "proto2";
+import "nanopb.proto";
+
+message RectifierInfo {
+  required uint32 StatusValue = 1;
+  required float InputPower = 2;
+  required float InputFrequency = 3;
+  required float InputCurrent = 4;
+  required float OutputPower = 5;
+  required float Efficiency = 6;
+  required float OutputVoltage = 7;
+  required float MaxOutputCurrent = 8;
+  required float InputVoltage = 9;
+  required float OutputModuleTemp = 10;
+  required float InputModuleTemp = 11;
+  required float OutputCurrent = 12;
+  required uint32 AlarmValue = 13;
+}

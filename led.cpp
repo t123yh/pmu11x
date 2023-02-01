@@ -9,8 +9,6 @@
 #include <cstdio>
 #include <hardware/gpio.h>
 
-static void LedTimerFunction(TimerHandle_t t);
-
 void Led::On() {
   gpio_put(gpio, false);
 }
@@ -62,8 +60,8 @@ void Led::Callback(TimerHandle_t t) {
   static_cast<Led*>(pvTimerGetTimerID(t))->Period();
 }
 
-Led SysBlueLed(19, 200);
-Led SysYellowLed(20, 200);
+Led SysBlueLed(20, 200);
+Led SysYellowLed(19, 200);
 Led ComGreenLed(11, 40);
 Led ComYellowLed(10, 40);
 

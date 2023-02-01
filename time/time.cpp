@@ -92,7 +92,7 @@ static void sntpClient_GetTime(SntpTimestamp_t *pCurrentTime) {
 #define TIME_REQUEST_SEND_WAIT_TIME_MS          2000
 #define TIME_REQUEST_RECEIVE_WAIT_TIME_MS       1000
 
-void timeWork() {
+void timeWork(void*_) {
   uint8_t networkBuffer[SNTP_PACKET_BASE_SIZE];
 
   NetworkContext_t udpContext = {

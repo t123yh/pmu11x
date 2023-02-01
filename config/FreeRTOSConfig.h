@@ -88,7 +88,12 @@
 #define configTIMER_TASK_STACK_DEPTH            256
 
 /* Define to trap errors during development. */
-#define configASSERT( x )
+#define configASSERT( x ) { \
+            if (!(x)) { \
+                portDISABLE_INTERRUPTS();\
+                while (1); \
+            } \
+        }
 
 /* Optional functions - most linkers will remove unused functions anyway. */
 #define INCLUDE_vTaskPrioritySet                1

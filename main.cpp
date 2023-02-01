@@ -7,17 +7,21 @@
 #include <crc.h>
 #include <FreeRTOS_IP.h>
 #include <pb_encode.h>
+#include <hardware/adc.h>
 #include "rtt/SEGGER_RTT.h"
 
 static const uint LED_PIN_Blue = 20;
 static const uint LED_PIN_Yellow = 19;
 
 #include "ws/mongoose.h"
-#include "battery.h"
+#include "controller/battery.h"
 #include "led.h"
-#include "controller.h"
+#include "controller/controller.h"
 #include "time/time.h"
 #include "time/ds1302.h"
+#include "littlefs/lfs_util.h"
+#include "controller/rectifier.h"
+#include "fs.h"
 
 static bool pb_mg_write(pb_ostream_t *stream, const pb_byte_t *buf, size_t count)
 {
@@ -54,31 +58,52 @@ static void dateHeader(char* buf, int len) {
          timeinfo.tm_sec);
 }
 
+static char date_header[38];
+static void serveProtobuf(struct mg_connection* c, const pb_msgdesc_t *fields, const void *src_struct) {
+  size_t size = 0;
+  pb_get_encoded_size(&size, fields, src_struct);
+  mg_printf(c, "HTTP/1.1 200 OK\r\n"
+               "Cache-Control: no-cache\r\n"
+               "Content-Type: application/x-protobuf\r\n"
+               "Connection: close\r\n"
+               "Content-Length: %d\r\n"
+               "%s"
+               "\r\n", size, date_header);
+  pb_ostream_t stream = pb_ostream_from_mg(c);
+  pb_encode(&stream, fields, src_struct);
+  c->is_resp = 0;
+}
+
+extern bool ce;
 static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
-  char date_header[38];
   dateHeader(date_header, sizeof(date_header));
   if (ev == MG_EV_HTTP_MSG) {
     struct mg_http_message *hm = (struct mg_http_message *) ev_data;
-    if (mg_http_match_uri(hm, "/api/battery")) {              // On /api/hello requests,
-      auto batt = getCurrentBatteryInfo();
+    if (mg_http_match_uri(hm, "/query/battery")) {              // On /api/hello requests,
+      auto batt = batteryInfoStorage.Get();
       if (batt.has_value()) {
-        size_t size = 0;
-        pb_get_encoded_size(&size,&BatteryInfo_msg, &batt.value());
-        mg_printf(c, "HTTP/1.1 200 OK\r\n"
-                     "Cache-Control: no-cache\r\n"
-                     "Content-Type: application/x-protobuf\r\n"
-                     "Connection: close\r\n"
-                     "Content-Length: %d\r\n"
-                     "%s"
-                     "\r\n", size, date_header);
-        pb_ostream_t stream = pb_ostream_from_mg(c);
-        pb_encode(&stream, &BatteryInfo_msg, &batt.value());
-        c->is_resp = 0;
+        serveProtobuf(c, &BatteryInfo_msg, &batt.value());
       } else {
         mg_http_reply(c, 500, date_header, "");  // Send dynamic JSON response
       }
+    } else if (mg_http_match_uri(hm, "/query/rectifier")) {              // On /api/hello requests,
+        auto batt = rectifierInfoStorage.Get();
+        if (batt.has_value()) {
+          serveProtobuf(c, &RectifierInfo_msg, &batt.value());
+        } else {
+          mg_http_reply(c, 500, date_header, "");  // Send dynamic JSON response
+        }
+    } else if (mg_http_match_uri(hm, "/ctrl/rectifier-off")) {              // On /api/hello requests,
+      ce = false;
+      mg_http_reply(c, 200, date_header, "");  // Send dynamic JSON response
+    } else if (mg_http_match_uri(hm, "/ctrl/rectifier-on")) {              // On /api/hello requests,
+      ce = true;
+      mg_http_reply(c, 200, date_header, "");  // Send dynamic JSON response
+    } else if (mg_http_match_uri(hm, "/api/bus")) {
+      uint16_t result = adc_read();
+      mg_http_reply(c, 200, date_header, "%d", result);  // Send dynamic JSON response
     } else {                                                // For all other URIs,
-      struct mg_http_serve_opts opts = {.root_dir = ".", .extra_headers = date_header};   // Serve files
+      struct mg_http_serve_opts opts = {.root_dir = ".", .extra_headers = date_header, .fs = &mg_fs_littlefs};   // Serve files
       mg_http_serve_dir(c, hm, &opts);                      // From root_dir
     }
   }
@@ -92,13 +117,19 @@ void mg_main(void* _) {
 }
 
 void init_task(void* _) {
+  ds1302Init();
   InitLed();
   BatteryInit();
+  RectifierInit();
+  SysBlueLed.mode = Led::REPEAT;
+  SysBlueLed.period = 500;
+  lfsInit();
+  xTaskCreate(timeWork, "NTP", 256, NULL, tskIDLE_PRIORITY, nullptr);
   xTaskCreate(mg_main, "MG",  4096, NULL,tskIDLE_PRIORITY, nullptr);
   xTaskCreate(controllerTask, "CTRL",  256, NULL,configMAX_PRIORITIES - 1, nullptr);
-  ds1302Init();
-  timeWork();
-  while (1) vTaskDelay(100);
+  while (1) {
+    vTaskDelay(5000);
+  }
 }
 
 static const uint8_t ucIPAddress[ 4 ] = { 192, 168, 1, 211 };
@@ -114,22 +145,19 @@ int main() {
   bi_decl(bi_program_description("First Blink"));
   bi_decl(bi_1pin_with_name(LED_PIN_Blue, "On-board LED"));
 
-  gpio_init(LED_PIN_Blue);
-  gpio_init(LED_PIN_Yellow);
-  gpio_set_dir(LED_PIN_Blue, GPIO_OUT);
-  gpio_set_dir(LED_PIN_Yellow, GPIO_OUT);
-  gpio_put(LED_PIN_Blue, 1);
-  gpio_put(LED_PIN_Yellow, 1);
-
   pico_unique_board_id_t board_id;
   pico_get_unique_board_id(&board_id);
 
   uint8_t mac_addr[6];
-  uint32_t crc = xcrc32(board_id.id, sizeof(board_id), 0xFFFFFFFF);
+  uint32_t crc = lfs_crc(0xFFFFFFFF, board_id.id, sizeof(board_id));
   mac_addr[0] = 0x74;
   mac_addr[1] = 0x12;
   mac_addr[2] = 0x34;
   memcpy(mac_addr + 3, &crc, 3);
+
+  adc_init();
+  adc_gpio_init(28);
+  adc_select_input(2);
 
   FreeRTOS_IPInit( ucIPAddress,
                    ucNetMask,

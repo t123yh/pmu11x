@@ -7,7 +7,7 @@
 #include "littlefs/lfs.h"
 #include <FreeRTOS.h>
 #include <semphr.h>
-#include "../utils.h"
+#include <utils.h>
 #include "ws/mongoose.h"
 #include <hardware/flash.h>
 #include <hardware/structs/ssi.h>
