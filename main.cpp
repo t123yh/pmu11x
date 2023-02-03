@@ -22,6 +22,7 @@ static const uint LED_PIN_Yellow = 19;
 #include "littlefs/lfs_util.h"
 #include "controller/rectifier.h"
 #include "fs.h"
+#include "controller/config.h"
 
 static bool pb_mg_write(pb_ostream_t *stream, const pb_byte_t *buf, size_t count)
 {
@@ -117,13 +118,14 @@ void mg_main(void* _) {
 }
 
 void init_task(void* _) {
+  lfsInit();
+  LoadConfigFromFilesystem();
   ds1302Init();
   InitLed();
   BatteryInit();
   RectifierInit();
   SysBlueLed.mode = Led::REPEAT;
   SysBlueLed.period = 500;
-  lfsInit();
   xTaskCreate(timeWork, "NTP", 256, NULL, tskIDLE_PRIORITY, nullptr);
   xTaskCreate(mg_main, "MG",  4096, NULL,tskIDLE_PRIORITY, nullptr);
   xTaskCreate(controllerTask, "CTRL",  256, NULL,configMAX_PRIORITIES - 1, nullptr);

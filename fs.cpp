@@ -16,7 +16,7 @@
 #include <hardware/dma.h>
 
 // variables used by the filesystem
-static lfs_t lfs;
+lfs_t lfs_instance;
 
 // Begin at 12MB
 const size_t kFlashStartSector = 3072;
@@ -130,17 +130,17 @@ static struct lfs_config cfg = {
 void lfsInit() {
   lfsMutex = xSemaphoreCreateMutex();
   read_dma_ch = dma_claim_unused_channel(true);
-  int err = lfs_mount(&lfs, &cfg);
+  int err = lfs_mount(&lfs_instance, &cfg);
   if (err) {
     // TODO: Only format if user consents
-    lfs_format(&lfs, &cfg);
-    lfs_mount(&lfs, &cfg);
+    lfs_format(&lfs_instance, &cfg);
+    lfs_mount(&lfs_instance, &cfg);
   }
 }
 
 static int mg_lfs_stat(const char *path, size_t *size, time_t *mtime) {
   lfs_info info;
-  int err = lfs_stat(&lfs, path, &info);
+  int err = lfs_stat(&lfs_instance, path, &info);
   if (err)
     return 0;
   *size = info.size;
@@ -150,15 +150,15 @@ static int mg_lfs_stat(const char *path, size_t *size, time_t *mtime) {
 static void mg_lfs_list(const char *dir, void (*fn)(const char *, void *),
                         void *userdata) {
   lfs_dir_t ent;
-  int err = lfs_dir_open(&lfs, &ent, dir);
+  int err = lfs_dir_open(&lfs_instance, &ent, dir);
   if (err < 0) {
     return;
   }
   lfs_info dir_info;
-  while (lfs_dir_read(&lfs, &ent, &dir_info) > 0) {
+  while (lfs_dir_read(&lfs_instance, &ent, &dir_info) > 0) {
     fn(dir_info.name, userdata);
   }
-  lfs_dir_close(&lfs, &ent);
+  lfs_dir_close(&lfs_instance, &ent);
 }
 
 static void *mg_lfs_open(const char *path, int flags) {
@@ -166,7 +166,7 @@ static void *mg_lfs_open(const char *path, int flags) {
   lfs_file_t *ptr = (lfs_file_t *) pvPortMalloc(sizeof(lfs_file_t));
   if (!ptr)
     return nullptr;
-  int err = lfs_file_open(&lfs, ptr, path, f);
+  int err = lfs_file_open(&lfs_instance, ptr, path, f);
   if (err < 0) {
     vPortFree(ptr);
     ptr = nullptr;
@@ -175,32 +175,32 @@ static void *mg_lfs_open(const char *path, int flags) {
 }
 
 static void mg_lfs_close(void *fp) {
-  lfs_file_close(&lfs, (lfs_file_t *) fp);
+  lfs_file_close(&lfs_instance, (lfs_file_t *) fp);
   vPortFree(fp);
 }
 
 static size_t mg_lfs_read(void *fp, void *buf, size_t len) {
-  return lfs_file_read(&lfs, (lfs_file_t *) fp, buf, len);
+  return lfs_file_read(&lfs_instance, (lfs_file_t *) fp, buf, len);
 }
 
 static size_t mg_lfs_write(void *fp, const void *buf, size_t len) {
-  return lfs_file_write(&lfs, (lfs_file_t *) fp, buf, len);
+  return lfs_file_write(&lfs_instance, (lfs_file_t *) fp, buf, len);
 }
 
 static size_t mg_lfs_seek(void *fp, size_t offset) {
-  return lfs_file_seek(&lfs, (lfs_file_t *) fp, offset, LFS_SEEK_SET);
+  return lfs_file_seek(&lfs_instance, (lfs_file_t *) fp, offset, LFS_SEEK_SET);
 }
 
 static bool mg_lfs_rename(const char *from, const char *to) {
-  return lfs_rename(&lfs, from, to) == 0;
+  return lfs_rename(&lfs_instance, from, to) == 0;
 }
 
 static bool mg_lfs_remove(const char *path) {
-  return lfs_remove(&lfs, path) == 0;
+  return lfs_remove(&lfs_instance, path) == 0;
 }
 
 static bool mg_lfs_mkdir(const char *path) {
-  return lfs_mkdir(&lfs, path) == 0;
+  return lfs_mkdir(&lfs_instance, path) == 0;
 }
 
 struct mg_fs mg_fs_littlefs = {mg_lfs_stat, mg_lfs_list, mg_lfs_open, mg_lfs_close, mg_lfs_read,
