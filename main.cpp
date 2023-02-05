@@ -23,90 +23,15 @@ static const uint LED_PIN_Yellow = 19;
 #include "controller/rectifier.h"
 #include "fs.h"
 #include "controller/config.h"
+#include "controller/http.h"
 
-static bool pb_mg_write(pb_ostream_t *stream, const pb_byte_t *buf, size_t count) {
-  mg_connection *dest = (mg_connection *) stream->state;
-  mg_send(dest, buf, count);
-  return true;
-}
-
-pb_ostream_t pb_ostream_from_mg(mg_connection *conn) {
-  pb_ostream_t stream;
-  stream.callback = &pb_mg_write;
-  stream.state = conn;
-  stream.max_size = SIZE_MAX;
-  stream.bytes_written = 0;
-#ifndef PB_NO_ERRMSG
-  stream.errmsg = NULL;
-#endif
-  return stream;
-}
-
-static void extraHeader(char *buf, int len) {
-  const char *weekday_names[] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
-  const char *month_names[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
-  tm timeinfo{};
-  ds1302GetTime(&timeinfo);
-  snprintf(buf, len, "Date: %s, %02d %s %04d %02d:%02d:%02d GMT\r\nAccess-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: GET, POST\r\n",
-           weekday_names[timeinfo.tm_wday],
-           timeinfo.tm_mday,
-           month_names[timeinfo.tm_mon],
-           timeinfo.tm_year + 1900,
-           timeinfo.tm_hour,
-           timeinfo.tm_min,
-           timeinfo.tm_sec);
-}
-
-static char date_header[200];
-
-static void serveProtobuf(struct mg_connection *c, const pb_msgdesc_t *fields, const void *src_struct) {
-  size_t size = 0;
-  pb_get_encoded_size(&size, fields, src_struct);
-  mg_printf(c, "HTTP/1.1 200 OK\r\n"
-               "Cache-Control: no-cache\r\n"
-               "Content-Type: application/x-protobuf\r\n"
-               "Connection: close\r\n"
-               "Content-Length: %d\r\n"
-               "%s"
-               "\r\n", size, date_header);
-  pb_ostream_t stream = pb_ostream_from_mg(c);
-  pb_encode(&stream, fields, src_struct);
-  c->is_resp = 0;
-}
+static HttpHandler http_handler;
 
 static void fn(struct mg_connection *c, int ev, void *ev_data, void *fn_data) {
-  extraHeader(date_header, sizeof(date_header));
   if (ev == MG_EV_HTTP_MSG) {
-    struct mg_http_message *hm = (struct mg_http_message *) ev_data;
-    char user[10], passwd[20];
-    mg_http_creds(hm, user, sizeof(user), passwd, sizeof(passwd));
-
-
-    if (mg_http_match_uri(hm, "/query/battery")) {              // On /api/hello requests,
-      auto batt = batteryInfoStorage.Get();
-      if (batt.has_value()) {
-        serveProtobuf(c, &BatteryInfo_msg, &batt.value());
-      } else {
-        mg_http_reply(c, 503, date_header, "");  // Send dynamic JSON response
-      }
-    } else if (mg_http_match_uri(hm, "/query/rectifier")) {              // On /api/hello requests,
-      auto batt = rectifierInfoStorage.Get();
-      if (batt.has_value()) {
-        serveProtobuf(c, &RectifierInfo_msg, &batt.value());
-      } else {
-        mg_http_reply(c, 503, date_header, "");  // Send dynamic JSON response
-      }
-    } else if (mg_http_match_uri(hm, "/ctrl/rectifier-off")) {              // On /api/hello requests,
-      mg_http_reply(c, 200, date_header, "");  // Send dynamic JSON response
-    } else if (mg_http_match_uri(hm, "/ctrl/rectifier-on")) {              // On /api/hello requests,
-      mg_http_reply(c, 200, date_header, "");  // Send dynamic JSON response
-    } else if (mg_http_match_uri(hm, "/api/bus")) {
-      uint16_t result = adc_read();
-      mg_http_reply(c, 200, date_header, "%d", result);  // Send dynamic JSON response
-    } else {                                                // For all other URIs,
-      struct mg_http_serve_opts opts = {.root_dir = ".", .extra_headers = date_header, .fs = &mg_fs_littlefs};   // Serve files
-      mg_http_serve_dir(c, hm, &opts);                      // From root_dir
-    }
+    auto *hm = (struct mg_http_message *) ev_data;
+    mg_http_reply(c, 200, "Access-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: GET, POST\r\n", "");
+    // http_handler.HandleRequest(c, hm);
   }
 }
 
@@ -122,7 +47,9 @@ static uint8_t dev_mac_addr[6];
 void init_task(void *_) {
   lfsInit();
   lfs_remove(&lfs_instance, "/power_config.pb");
+  lfs_mkdir(&lfs_instance, "/public");
   LoadConfigFromFilesystem();
+  http_handler.LoadPassword();
 
   auto net = networkConfigItem.Get();
   FreeRTOS_IPInit(net.static_ip.addr,

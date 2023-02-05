@@ -16,6 +16,8 @@
 AtomicStorage<BatteryInfo> batteryInfoStorage;
 AtomicStorage<RectifierInfo> rectifierInfoStorage;
 
+bool controllerChargeDisable, controllerMainsDisable;
+
 static const float ChargeCurrentAllowedDeviation = 0.3f;
 static const float ChargeVoltageMaximumDelta = 0.9f;
 float RectifierOnlineVoltage = 0;
@@ -110,7 +112,7 @@ void controllerTask(void *_) {
         if (cur > max_cell_voltage)
           max_cell_voltage = cur;
       }
-      bool charge = !localConfig.charge_disable && max_cell_voltage < localChargeConfig.stop_charging_threshold && !battError;
+      bool charge = !controllerChargeDisable && max_cell_voltage < localChargeConfig.stop_charging_threshold && !battError;
       if (rectOk) {
         // If mains supply is OK: bit 27
         // TODO: when mains is not ok, alarmValue = 134349344. Should investigate which bit actually means mains not ok
@@ -121,7 +123,7 @@ void controllerTask(void *_) {
         // then rectifierShouldBeOff = true.
         // If battery SoC is low, do not turn off rectifier
         bool rectifierShouldBeOff =
-            localChargeConfig.battery_low < localBattInfo.soc && localConfig.mains_supply_disable;
+            localChargeConfig.battery_low < localBattInfo.soc && controllerMainsDisable;
         if (mainsOk && !rectifierShouldBeOff) {
           // If mains is OK, and rectifier should be powered on
           // then check whether we want to charge

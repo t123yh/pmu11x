@@ -12,6 +12,9 @@
 
 extern AtomicStorage<BatteryInfo> batteryInfoStorage;
 extern AtomicStorage<RectifierInfo> rectifierInfoStorage;
+
+extern bool controllerChargeDisable, controllerMainsDisable;
+
 void controllerTask(void* _);
 
 #endif //PMU11X_CTRL_CONTROLLER_H

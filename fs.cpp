@@ -162,7 +162,7 @@ static void mg_lfs_list(const char *dir, void (*fn)(const char *, void *),
 }
 
 static void *mg_lfs_open(const char *path, int flags) {
-  int f = flags == MG_FS_READ ? lfs_open_flags::LFS_O_RDONLY : lfs_open_flags::LFS_O_APPEND;
+  int f = flags == MG_FS_READ ? LFS_O_RDONLY : (LFS_O_APPEND | LFS_O_CREAT | LFS_O_WRONLY);
   lfs_file_t *ptr = (lfs_file_t *) pvPortMalloc(sizeof(lfs_file_t));
   if (!ptr)
     return nullptr;

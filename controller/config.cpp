@@ -21,11 +21,11 @@ static const NetworkConfig defaultNetworkConfig = {
 static const ChargeConfig defaultChargeConfig = ChargeConfig_init_default;
 
 ConfigItem<NetworkConfig, NetworkConfig_msg> networkConfigItem("/network_config.pb", defaultNetworkConfig);
-ConfigItem<ChargeConfig, ChargeConfig_msg> powerConfigItem("/charge_config.pb", defaultChargeConfig);
+ConfigItem<ChargeConfig, ChargeConfig_msg> chargeConfigItem("/charge_config.pb", defaultChargeConfig);
 
 void LoadConfigFromFilesystem() {
   networkConfigItem.Load();
-  powerConfigItem.Load();
+  chargeConfigItem.Load();
 }
 
 static bool pb_lfs_write(pb_ostream_t *stream, const pb_byte_t *buf, size_t count) {

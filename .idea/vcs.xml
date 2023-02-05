@@ -3,5 +3,8 @@
   <component name="VcsDirectoryMappings">
     <mapping directory="" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/FreeRTOS-Plus-TCP" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/can2040" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/coreSNTP" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/littlefs" vcs="Git" />
   </component>
 </project>
