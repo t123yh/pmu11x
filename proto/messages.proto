@@ -13,7 +13,7 @@ message BatteryInfo {
   required float current = 2;
   required float soc = 3;
   required float full_capacity = 4;
-  repeated sint32 temperatures = 5 [(nanopb).max_count = 4];
+  repeated sint32 temperatures = 5 [(nanopb).max_count = 5];
   required bytes alarm = 6 [(nanopb).max_size = 12];
   required int32 loop = 7;
   required float voltage_sum = 8;
