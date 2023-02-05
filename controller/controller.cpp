@@ -12,6 +12,7 @@
 #include <task.h>
 #include <optional>
 #include <cmath>
+#include <hardware/watchdog.h>
 
 AtomicStorage<BatteryInfo> batteryInfoStorage;
 AtomicStorage<RectifierInfo> rectifierInfoStorage;
@@ -62,6 +63,7 @@ void sanitizeConfig() {
 void controllerTask(void *_) {
   uint32_t batteryFaultCycles = 0, rectifierFaultCycles = 0;
   while (1) {
+    watchdog_update();
     localChargeConfig = chargeConfigItem.Get();
     sanitizeConfig();
     battCommOk = GetBatteryInfo(&localBattInfo);

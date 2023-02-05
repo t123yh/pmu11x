@@ -47,4 +47,4 @@ add_executable(pmu11x_ctrl main.cpp w5500.c rtt/SEGGER_RTT.c rtt/SEGGER_RTT_ASM_
 
 pico_generate_pio_header(pmu11x_ctrl ${PROJECT_SOURCE_DIR}/time/ds1302.pio)
 
-target_link_libraries(pmu11x_ctrl pico_stdlib hardware_dma hardware_spi pico_unique_id hardware_uart FreeRTOS nanopb hardware_pio hardware_flash hardware_adc lfs)
+target_link_libraries(pmu11x_ctrl pico_stdlib hardware_dma hardware_spi pico_unique_id hardware_uart FreeRTOS nanopb hardware_pio hardware_flash hardware_adc lfs hardware_watchdog)

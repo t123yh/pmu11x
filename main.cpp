@@ -101,7 +101,7 @@ int main() {
   adc_init();
   adc_gpio_init(28);
   adc_select_input(2);
-
+  watchdog_enable(2000, true);
 
   xTaskCreate(init_task, "INIT", 512, NULL, tskIDLE_PRIORITY, nullptr);
   vTaskStartScheduler();
