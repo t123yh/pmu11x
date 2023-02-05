@@ -8,14 +8,8 @@
 
 static const NetworkConfig defaultNetworkConfig = {
     .ntp_server = {"ntp.aliyun.com", "ntp.tencent.com", "time.asia.apple.com"},
-    .static_ip = {
-        .addr = {192, 168, 88, 253},
-        .netmask = {255, 255, 255, 0},
-        .gateway ={192, 168, 88, 1},
-        .dns_server = {1, 1, 1, 1},
-    },
-    .has_dhcp = true,
-    .dhcp = DhcpConfig_init_default
+    .which_ip = NetworkConfig_dhcp_tag,
+    .ip = {.dhcp = DhcpConfig_init_default}
 };
 
 static const ChargeConfig defaultChargeConfig = ChargeConfig_init_default;

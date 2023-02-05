@@ -63,9 +63,11 @@ message ChargeConfig {
 
 message NetworkConfig {
   repeated string ntp_server = 1 [(nanopb).max_length = 20, (nanopb).max_count = 3];
-  required StaticIpConfig static_ip = 2;
-  // If dhcp not working, fall back to static ip
-  optional DhcpConfig dhcp = 3;
+  required uint32 ntp_interval = 4;
+  oneof ip {
+    StaticIpConfig static_addr = 2;
+    DhcpConfig dhcp = 3;
+  }
 }
 
 message Control {

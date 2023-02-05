@@ -77,7 +77,6 @@ void HttpHandler::HandleRequest(mg_connection *c, mg_http_message *msg) {
   MakeExtraHeaders();
   Authenticate();
   authenticated_ = true;
-
   if (mg_http_match_uri(hm_, "/query/battery")) {
     ServeQueryBattery();
   } else if (mg_http_match_uri(hm_, "/query/rectifier")) {
@@ -110,7 +109,7 @@ void HttpHandler::HandleRequest(mg_connection *c, mg_http_message *msg) {
     }
   } else {
     struct mg_http_serve_opts opts = {.root_dir = "/public", .extra_headers = extra_headers_, .fs = &mg_fs_littlefs};
-    mg_http_serve_dir(c, hm_, &opts);
+    mg_http_serve_dir(c_, hm_, &opts);
   }
 
   c_->is_resp = 1;
@@ -156,8 +155,7 @@ void HttpHandler::SavePassword() {
 void HttpHandler::ServeQueryBattery() {
   auto batt = batteryInfoStorage.Get();
   if (batt.has_value()) {
-    // ServeProtobuf(&BatteryInfo_msg, &batt.value());
-    ReplyHttpCode(200);
+    ServeProtobuf(&BatteryInfo_msg, &batt.value());
   } else {
     ReplyHttpCode(503);
   }
@@ -166,8 +164,7 @@ void HttpHandler::ServeQueryBattery() {
 void HttpHandler::ServeQueryRectifier() {
   auto rect = rectifierInfoStorage.Get();
   if (rect.has_value()) {
-    // ServeProtobuf(&RectifierInfo_msg, &rect.value());
-    ReplyHttpCode(200);
+    ServeProtobuf(&RectifierInfo_msg, &rect.value());
   } else {
     ReplyHttpCode(503);
   }
