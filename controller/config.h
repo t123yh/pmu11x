@@ -64,7 +64,7 @@ template <typename T, const pb_msgdesc_t & desc> struct ConfigItem {
 };
 
 extern ConfigItem<NetworkConfig, NetworkConfig_msg> networkConfigItem;
-extern ConfigItem<PowerConfig , PowerConfig_msg> powerConfigItem;
+extern ConfigItem<ChargeConfig, ChargeConfig_msg> chargeConfigItem;
 void LoadConfigFromFilesystem();
 
 #endif //PMU11X_CTRL_CONFIG_H

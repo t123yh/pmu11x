@@ -37,16 +37,17 @@ message RectifierInfo {
 }
 
 message StaticIpConfig {
-  required bytes addr = 1 [(nanopb).max_size = 4];
-  required bytes netmask = 2 [(nanopb).max_size = 4];
-  required bytes gateway = 3 [(nanopb).max_size = 4];
+  required bytes addr = 1 [(nanopb).max_size = 4, (nanopb).fixed_length = true];
+  required bytes netmask = 2 [(nanopb).max_size = 4, (nanopb).fixed_length = true];
+  required bytes gateway = 3 [(nanopb).max_size = 4, (nanopb).fixed_length = true];
+  required bytes dns_server = 4 [(nanopb).max_size = 4, (nanopb).fixed_length = true];
 }
 
 message DhcpConfig {
-  required string hostname = 1 [default = "pmu11x"];
+  required string hostname = 1 [default = "pmu11x", (nanopb).max_length = 12];
 }
 
-message Parameters {
+message ChargeConfig {
   required float charge_current_0_5 = 1 [default = 3];
   required float charge_current_5_90 = 2 [default = 15];
   required float charge_current_90_100 = 3 [default = 5];
@@ -57,18 +58,17 @@ message Parameters {
   // Battery critical level: when battery SoC is lower than this threshold,
   // notify all computers with NUT protocol shutdown
   required float battery_critical = 6 [default = 10];
+  required float stop_charging_threshold = 7 [default = 3.7];
 }
 
 message NetworkConfig {
   repeated string ntp_server = 1 [(nanopb).max_length = 20, (nanopb).max_count = 3];
-  oneof ip_config {
-    StaticIpConfig static_ip = 2;
-    DhcpConfig dhcp = 3;
-  }
+  required StaticIpConfig static_ip = 2;
+  // If dhcp not working, fall back to static ip
+  optional DhcpConfig dhcp = 3;
 }
 
-message PowerConfig {
-  required Parameters params = 1;
+message Control {
   required bool charge_disable = 2 [default = false];
   required bool mains_supply_disable = 3 [default = false];
 }

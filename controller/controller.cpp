@@ -11,12 +11,13 @@
 #include <FreeRTOS.h>
 #include <task.h>
 #include <optional>
+#include <cmath>
 
 AtomicStorage<BatteryInfo> batteryInfoStorage;
 AtomicStorage<RectifierInfo> rectifierInfoStorage;
 
 static const float ChargeCurrentAllowedDeviation = 0.3f;
-static const float ChargeVoltageMaximumDelta = 0.7f;
+static const float ChargeVoltageMaximumDelta = 0.9f;
 float RectifierOnlineVoltage = 0;
 
 bool SetRectifierVoltage(float val) {
@@ -35,31 +36,31 @@ void ResetVoltage() {
 
 static BatteryInfo localBattInfo;
 static RectifierInfo localRectInfo;
-static PowerConfig localConfig;
+static ChargeConfig localChargeConfig;
 static TickType_t rectifierOffLastSent;
 
 static bool battCommOk;
 static bool rectOk;
 
 void sanitizeConfig() {
-  if (localConfig.params.charge_current_90_100 > 30)
-    localConfig.params.charge_current_90_100 = 30;
-  if (localConfig.params.charge_current_5_90 > 30)
-    localConfig.params.charge_current_5_90 = 30;
-  if (localConfig.params.charge_current_0_5 > 30)
-    localConfig.params.charge_current_0_5 = 30;
-  if (localConfig.params.safe_voltage > 55)
-    localConfig.params.safe_voltage = 55;
-  if (localConfig.params.battery_low < 10)
-    localConfig.params.battery_low = 10;
-  if (localConfig.params.battery_critical < 3)
-    localConfig.params.battery_critical = 3;
+  if (localChargeConfig.charge_current_90_100 > 30)
+    localChargeConfig.charge_current_90_100 = 30;
+  if (localChargeConfig.charge_current_5_90 > 30)
+    localChargeConfig.charge_current_5_90 = 30;
+  if (localChargeConfig.charge_current_0_5 > 30)
+    localChargeConfig.charge_current_0_5 = 30;
+  if (localChargeConfig.safe_voltage > 55)
+    localChargeConfig.safe_voltage = 55;
+  if (localChargeConfig.battery_low < 10)
+    localChargeConfig.battery_low = 10;
+  if (localChargeConfig.battery_critical < 3)
+    localChargeConfig.battery_critical = 3;
 }
 
 void controllerTask(void *_) {
   uint32_t batteryFaultCycles = 0, rectifierFaultCycles = 0;
   while (1) {
-    localConfig = powerConfigItem.Get();
+    localChargeConfig = chargeConfigItem.Get();
     sanitizeConfig();
     battCommOk = GetBatteryInfo(&localBattInfo);
     batteryInfoStorage.Set(battCommOk, &localBattInfo);
@@ -78,8 +79,8 @@ void controllerTask(void *_) {
     } else {
       if (rectifierFaultCycles != 0) {
         // Rectifier may have been re-plugged
-        RectifierOfflineVoltageControl(localConfig.params.safe_voltage);
-        SetRectifierVoltage(localConfig.params.safe_voltage);
+        RectifierOfflineVoltageControl(localChargeConfig.safe_voltage);
+        SetRectifierVoltage(localChargeConfig.safe_voltage);
       }
       rectifierFaultCycles = 0;
     }
@@ -103,7 +104,13 @@ void controllerTask(void *_) {
           || battAlarms.PackOverVoltageProtection || battAlarms.PackVoltInvalidAlert || battAlarms.PcbOverTempAlert
           || battAlarms.SeriousDryContactActionAlert || battAlarms.VoltageAdcErrorAlert ||
           battAlarms.VoltageLineBreakAlert;
-      bool charge = !localConfig.charge_disable && localBattInfo.soc < 99.9 && !battError;
+      float max_cell_voltage = 0;
+      for (int i = 0; i < localBattInfo.cells_count; i++) {
+        float cur = localBattInfo.cells[i].value;
+        if (cur > max_cell_voltage)
+          max_cell_voltage = cur;
+      }
+      bool charge = !localConfig.charge_disable && max_cell_voltage < localChargeConfig.stop_charging_threshold && !battError;
       if (rectOk) {
         // If mains supply is OK: bit 27
         // TODO: when mains is not ok, alarmValue = 134349344. Should investigate which bit actually means mains not ok
@@ -114,7 +121,7 @@ void controllerTask(void *_) {
         // then rectifierShouldBeOff = true.
         // If battery SoC is low, do not turn off rectifier
         bool rectifierShouldBeOff =
-            localConfig.params.battery_low < localBattInfo.soc && localConfig.mains_supply_disable;
+            localChargeConfig.battery_low < localBattInfo.soc && localConfig.mains_supply_disable;
         if (mainsOk && !rectifierShouldBeOff) {
           // If mains is OK, and rectifier should be powered on
           // then check whether we want to charge
@@ -133,9 +140,9 @@ void controllerTask(void *_) {
               } else {
                 float batteryActualCurrent = -localBattInfo.current;
                 float batteryTargetCurrent =
-                    localBattInfo.soc < 5.0f ? localConfig.params.charge_current_0_5 :
-                    localBattInfo.soc < 90.0f ? localConfig.params.charge_current_5_90
-                                              : localConfig.params.charge_current_90_100;
+                    localBattInfo.soc < 5.0f ? localChargeConfig.charge_current_0_5 :
+                    localBattInfo.soc < 90.0f ? localChargeConfig.charge_current_5_90
+                                              : localChargeConfig.charge_current_90_100;
                 if (RectifierOnlineVoltage < localBattInfo.voltage_sum) {
                   RectifierOnlineVoltage = localBattInfo.voltage_sum;
                 }
@@ -197,7 +204,7 @@ void controllerTask(void *_) {
       }
     } else {
       // If battery information is not available, put rectifier to a safe state
-      SetRectifierVoltage(localConfig.params.safe_voltage);
+      SetRectifierVoltage(localChargeConfig.safe_voltage);
     }
 
     vTaskDelay(100);

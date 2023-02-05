@@ -6,21 +6,22 @@
 #include <pb_decode.h>
 #include <pb_encode.h>
 
-AtomicStorage<NetworkConfig> currentNetworkConfig;
-AtomicStorage<PowerConfig> currentPowerConfig;
-
 static const NetworkConfig defaultNetworkConfig = {
     .ntp_server = {"ntp.aliyun.com", "ntp.tencent.com", "time.asia.apple.com"},
-    .which_ip_config = NetworkConfig_dhcp_tag,
-    .ip_config = {
-        .dhcp = DhcpConfig_init_default
-    }
+    .static_ip = {
+        .addr = {192, 168, 88, 253},
+        .netmask = {255, 255, 255, 0},
+        .gateway ={192, 168, 88, 1},
+        .dns_server = {1, 1, 1, 1},
+    },
+    .has_dhcp = true,
+    .dhcp = DhcpConfig_init_default
 };
 
-static const PowerConfig defaultPowerConfig = PowerConfig_init_default;
+static const ChargeConfig defaultChargeConfig = ChargeConfig_init_default;
 
 ConfigItem<NetworkConfig, NetworkConfig_msg> networkConfigItem("/network_config.pb", defaultNetworkConfig);
-ConfigItem<PowerConfig , PowerConfig_msg> powerConfigItem("/power_config.pb", defaultPowerConfig);
+ConfigItem<ChargeConfig, ChargeConfig_msg> powerConfigItem("/charge_config.pb", defaultChargeConfig);
 
 void LoadConfigFromFilesystem() {
   networkConfigItem.Load();
