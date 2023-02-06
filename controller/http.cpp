@@ -112,7 +112,7 @@ void HttpHandler::HandleRequest(mg_connection *c, mg_http_message *msg) {
     mg_http_serve_dir(c_, hm_, &opts);
   }
 
-  c_->is_resp = 1;
+  c_->is_resp = 0;
   c_ = nullptr;
   hm_ = nullptr;
 }
