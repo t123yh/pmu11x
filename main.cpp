@@ -69,7 +69,7 @@ void mg_main(void *_) {
   mip_init(&mgr, &mif);
   AddSntpCallback(&mgr);
   mg_http_listen(&mgr, "http://0.0.0.0:8000", fn, &mgr);
-  for (;;) mg_mgr_poll(&mgr, 10);
+  for (;;) mg_mgr_poll(&mgr, 5);
 }
 
 void init_task(void *_) {
