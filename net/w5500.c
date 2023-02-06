@@ -1,7 +1,7 @@
 #include <sys/cdefs.h>
 #include <FreeRTOS.h>
 #include <task.h>
-#include "ws/mongoose.h"
+#include "mongoose.h"
 #include <pico/stdlib.h>
 #include <hardware/spi.h>
 #include <hardware/dma.h>

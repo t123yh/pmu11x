@@ -14,14 +14,14 @@
 static const uint LED_PIN_Blue = 20;
 static const uint LED_PIN_Yellow = 19;
 
-#include "ws/mongoose.h"
+#include "net/mongoose.h"
 #include "controller/battery.h"
 #include "led.h"
 #include "controller/controller.h"
 #include "time/ds1302.h"
-#include "littlefs/lfs_util.h"
+#include "fs/lfs_util.h"
 #include "controller/rectifier.h"
-#include "fs.h"
+#include "fs/fs.h"
 #include "controller/config.h"
 #include "controller/http.h"
 #include "time/sntp.h"

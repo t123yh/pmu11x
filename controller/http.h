@@ -5,7 +5,7 @@
 #ifndef PMU11X_CTRL_HTTP_H
 #define PMU11X_CTRL_HTTP_H
 
-#include "../ws/mongoose.h"
+#include "../net/mongoose.h"
 
 class HttpHandler {
 private:

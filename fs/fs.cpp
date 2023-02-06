@@ -4,11 +4,10 @@
 
 #include <pico/platform.h>
 #include "fs.h"
-#include "littlefs/lfs.h"
+#include "lfs.h"
 #include <FreeRTOS.h>
 #include <semphr.h>
 #include <utils.h>
-#include "ws/mongoose.h"
 #include <hardware/flash.h>
 #include <hardware/structs/ssi.h>
 #include <hardware/structs/dma.h>

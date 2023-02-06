@@ -5,7 +5,7 @@
 #include <FreeRTOS.h>
 #include <queue.h>
 #include "rectifier.h"
-#include "../can2040/src/can2040.h"
+#include "../can/can2040.h"
 #include "../rtt/SEGGER_RTT.h"
 #include <pico/platform.h>
 #include <hardware/irq.h>

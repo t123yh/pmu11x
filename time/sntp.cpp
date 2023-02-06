@@ -4,7 +4,6 @@
 
 #include <ctime>
 #include "sntp.h"
-#include "../ws/mongoose.h"
 #include "ds1302.h"
 #include "messages.pb.h"
 #include "../controller/config.h"

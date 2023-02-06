@@ -7,7 +7,7 @@
 
 #include <messages.pb.h>
 #include <utils.h>
-#include "../fs.h"
+#include "../fs/fs.h"
 #include "../rtt/SEGGER_RTT.h"
 #include <pb_encode.h>
 #include <pb_decode.h>

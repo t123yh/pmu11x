@@ -5,7 +5,7 @@
 #ifndef PMU11X_CTRL_SNTP_H
 #define PMU11X_CTRL_SNTP_H
 
-#include "../ws/mongoose.h"
+#include "../net/mongoose.h"
 
 void AddSntpCallback(mg_mgr* mgr);
 

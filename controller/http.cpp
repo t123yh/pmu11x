@@ -6,10 +6,8 @@
 #include <pb_encode.h>
 #include <hardware/adc.h>
 #include "http.h"
-#include "../ws/mongoose.h"
 #include "../time/ds1302.h"
-#include "lfs.h"
-#include "../fs.h"
+#include "../fs/fs.h"
 #include "controller.h"
 
 static const char* kCorsHeader = "Access-Control-Allow-Origin: *\r\nAccess-Control-Allow-Methods: GET, POST\r\n";
